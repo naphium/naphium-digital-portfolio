@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Copy, ExternalLink, Eye, Globe, Mail, X } from "lucide-react";
+import { Copy, ExternalLink, Globe, Mail, X } from "lucide-react";
 import { TopoCanvas } from "@/components/TopoCanvas";
 import { AudioPlayer } from "@/components/AudioPlayer";
 import { useApplyTheme, useLocal, usePortfolio, type PortfolioData } from "@/lib/portfolio";
@@ -71,25 +71,51 @@ function Index() {
   );
 }
 
+type Act = { type: number; name: string; details?: string; state?: string; application_id?: string; assets?: { large_image?: string }; timestamps?: { start?: number } };
 type Lan = {
   discord_status: string;
   discord_user: { id: string; username: string; global_name?: string; avatar?: string };
-  activities?: { type: number; name: string; details?: string; state?: string; timestamps?: { start?: number } }[];
+  activities?: Act[];
   listening_to_spotify?: boolean;
   spotify?: { song: string; artist: string; album_art_url?: string; timestamps?: { start?: number } };
 };
+const ACT_TYPES = ["Playing", "Streaming", "Listening to", "Watching", "", "Competing in"];
+const actImg = (a: Act) => {
+  const i = a.assets?.large_image;
+  if (!i) return undefined;
+  if (i.startsWith("mp:")) return `https://media.discordapp.net/${i.slice(3)}`;
+  if (i.startsWith("spotify:")) return `https://i.scdn.co/image/${i.slice(8)}`;
+  return a.application_id ? `https://cdn.discordapp.com/app-assets/${a.application_id}/${i}.png` : undefined;
+};
+/** Live Discord presence via Lanyard websocket (falls back to one REST fetch). */
 function useLanyard(id: string) {
   const [d, setD] = useState<Lan | null>(null);
   useEffect(() => {
-    if (!id?.trim()) { setD(null); return; }
-    let on = true;
-    const f = () => fetch(`https://api.lanyard.rest/v1/users/${id.trim()}`).then((r) => r.json()).then((j) => on && j.success && setD(j.data)).catch(() => {});
-    f();
-    const t = setInterval(f, 30000);
-    return () => { on = false; clearInterval(t); };
+    const uid = id?.trim();
+    if (!uid) { setD(null); return; }
+    let on = true, ws: WebSocket | null = null;
+    let hb: ReturnType<typeof setInterval> | undefined, retry: ReturnType<typeof setTimeout> | undefined;
+    fetch(`https://api.lanyard.rest/v1/users/${uid}`).then((r) => r.json()).then((j) => on && j.success && setD(j.data)).catch(() => {});
+    const connect = () => {
+      ws = new WebSocket("wss://api.lanyard.rest/socket");
+      ws.onmessage = (e) => {
+        const m = JSON.parse(e.data);
+        if (m.op === 1) {
+          hb = setInterval(() => ws?.readyState === 1 && ws.send(JSON.stringify({ op: 3 })), m.d.heartbeat_interval);
+          ws?.send(JSON.stringify({ op: 2, d: { subscribe_to_id: uid } }));
+        } else if (m.op === 0 && (m.t === "INIT_STATE" || m.t === "PRESENCE_UPDATE") && m.d?.discord_user && on) setD(m.d);
+      };
+      ws.onclose = () => { clearInterval(hb); if (on) retry = setTimeout(connect, 5000); };
+    };
+    connect();
+    return () => { on = false; clearInterval(hb); clearTimeout(retry); ws?.close(); };
   }, [id]);
   return d;
 }
+const fmtEl = (s: number) => {
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60;
+  return `${h ? `${h}:` : ""}${String(m).padStart(2, "0")}:${String(x).padStart(2, "0")}`;
+};
 
 function Hero({ data }: { data: PortfolioData }) {
   const p = data.profile;
@@ -104,20 +130,21 @@ function Hero({ data }: { data: PortfolioData }) {
   const du = lan?.discord_user;
   const avatar = p.avatarUrl || (du?.avatar ? `https://cdn.discordapp.com/avatars/${du.id}/${du.avatar}.png?size=256` : "");
 
-  let row: { img?: string | undefined; mode: string; title: string; sub: string; start: number | null } | null = null;
+  const rows: { img?: string | undefined; mode: string; title: string; sub: string; start: number | null }[] = [];
   let label = p.statusLabel;
   if (lan) {
     const custom = lan.activities?.find((x) => x.type === 4)?.state;
     label = `${du?.global_name || du?.username} · ${lan.discord_status}${custom ? ` · ${custom}` : ""}`;
-    const a = lan.activities?.find((x) => x.type !== 4 && x.type !== 2);
-    if (lan.listening_to_spotify && lan.spotify) row = { img: lan.spotify.album_art_url, mode: "Spotify", title: lan.spotify.song, sub: lan.spotify.artist, start: lan.spotify.timestamps?.start ?? null };
-    else if (a) row = { mode: a.name, title: a.details || a.name, sub: a.state || "", start: a.timestamps?.start ?? null };
-    else row = { mode: "Idle", title: "Not doing anything right now", sub: "Discord", start: null };
+    if (lan.listening_to_spotify && lan.spotify) rows.push({ img: lan.spotify.album_art_url, mode: "Listening to Spotify", title: lan.spotify.song, sub: lan.spotify.artist, start: lan.spotify.timestamps?.start ?? null });
+    for (const a of lan.activities ?? []) {
+      if (a.type === 4 || (a.type === 2 && a.name === "Spotify" && lan.listening_to_spotify)) continue;
+      rows.push({ img: actImg(a), mode: `${ACT_TYPES[a.type] ?? "Playing"} ${a.name}`, title: a.details || a.name, sub: a.state || "", start: a.timestamps?.start ?? null });
+    }
+    if (!rows.length) rows.push({ mode: "Discord", title: "Not doing anything right now", sub: lan.discord_status, start: null });
   } else {
     const pr = data.presence[act] ?? data.presence[0];
-    if (pr) row = { mode: pr.mode, title: pr.detail, sub: pr.state, start: since };
+    if (pr) rows.push({ mode: pr.mode, title: pr.detail, sub: pr.state, start: since });
   }
-  const elapsed = now && row?.start ? Math.max(0, Math.floor((now.getTime() - row.start) / 1000)) : 0;
 
   return (
     <header className="panel overflow-hidden">
@@ -145,7 +172,7 @@ function Hero({ data }: { data: PortfolioData }) {
         <p className="mt-4 text-lg font-medium text-primary">{p.tagline}</p>
         <p className="mt-2 max-w-xl text-[15px] text-muted-foreground">{p.bio}</p>
 
-        <div className="mt-6 w-full max-w-md rounded-xl border border-border bg-card/60 p-3 text-left">
+        <div className="mt-6 w-full max-w-md rounded-2xl bg-background/40 p-3 text-left backdrop-blur">
           <div className="flex items-center justify-between gap-2">
             <span className="flex min-w-0 items-center gap-2 font-mono text-xs text-foreground"><span className="live-dot shrink-0" /><span className="truncate">{label}</span></span>
             {!lan && (
@@ -156,16 +183,20 @@ function Hero({ data }: { data: PortfolioData }) {
               </div>
             )}
           </div>
-          {row && (
-            <div className="mt-3 flex items-center gap-3">
-              {row.img ? <img src={row.img} alt="" className="h-12 w-12 shrink-0 rounded-lg object-cover" /> : <div className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-secondary font-mono text-xs text-primary">{row.mode.slice(0, 2).toUpperCase()}</div>}
-              <div className="min-w-0">
-                <div className="truncate text-sm font-medium text-foreground">{row.title}</div>
-                <div className="truncate font-mono text-xs text-muted-foreground">{row.sub}</div>
-                {row.start && <div className="font-mono text-xs text-primary">{String(Math.floor(elapsed / 60)).padStart(2, "0")}:{String(elapsed % 60).padStart(2, "0")} elapsed</div>}
+          {rows.map((row, i) => {
+            const elapsed = now && row.start ? Math.max(0, Math.floor((now.getTime() - row.start) / 1000)) : 0;
+            return (
+              <div key={i} className="mt-3 flex items-center gap-3">
+                {row.img ? <img src={row.img} alt="" className="h-12 w-12 shrink-0 rounded-lg object-cover" /> : <div className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-secondary font-mono text-xs text-primary">{row.mode.replace(/^(Playing|Streaming|Listening to|Watching|Competing in) /, "").slice(0, 2).toUpperCase()}</div>}
+                <div className="min-w-0">
+                  <div className="truncate font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{row.mode}</div>
+                  <div className="truncate text-sm font-medium text-foreground">{row.title}</div>
+                  {row.sub && <div className="truncate text-xs text-muted-foreground">{row.sub}</div>}
+                  {row.start ? <div className="font-mono text-xs text-primary">{fmtEl(elapsed)} elapsed</div> : null}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })}
         </div>
       </div>
     </header>
@@ -197,16 +228,14 @@ function About({ d }: { d: PortfolioData }) {
     <div className="grid gap-4 md:grid-cols-2">
       <Card className="md:col-span-2"><H>Overview</H><p className="text-sm leading-relaxed text-muted-foreground">{d.about.overview}</p></Card>
       <Card><H>Engineering philosophy</H><p className="text-sm leading-relaxed text-muted-foreground">{d.about.philosophy}</p></Card>
-      <Card><H>Academics</H><div className="grid grid-cols-2 gap-2">{d.about.metrics.map((m, i) => (<div key={i} className="rounded border border-border p-3"><div className="font-serif text-lg text-foreground">{m.value}</div><div className="font-mono text-xs text-muted-foreground">{m.label}</div></div>))}</div></Card>
+      <Card><H>Academics</H><div className="grid grid-cols-2 gap-2">{d.about.metrics.map((m, i) => (<div key={i} className="rounded-lg bg-background/40 p-3"><div className="font-serif text-lg text-foreground">{m.value}</div><div className="font-mono text-xs text-muted-foreground">{m.label}</div></div>))}</div></Card>
       <Card className="md:col-span-2"><H>Workstation</H><KV items={d.about.hardware} /></Card>
     </div>
   );
 }
 
 function Links({ d }: { d: PortfolioData }) {
-  const [views, setViews] = useLocal<Record<string, number>>("naphium:views", {});
   const cats = [...new Set(d.links.map((l) => l.category))];
-  const bump = (n: string) => setViews({ ...views, [n]: (views[n] ?? 0) + 1 });
   return (
     <div className="grid gap-4 md:grid-cols-3">
       {cats.map((c) => (
@@ -214,15 +243,14 @@ function Links({ d }: { d: PortfolioData }) {
           <H>{c}</H>
           <ul className="space-y-2">
             {d.links.filter((l) => l.category === c).map((l) => (
-              <li key={l.name} className="flex items-center gap-3 rounded-xl border border-border p-2">
+              <li key={l.name} className="flex items-center gap-3 rounded-xl bg-background/40 p-2 transition-colors hover:bg-secondary/60">
                 <LinkIcon url={l.url} icon={l.icon} />
                 <div className="min-w-0 flex-1">
                   <div className="text-sm text-foreground">{l.name}</div>
                   <div className="truncate font-mono text-xs text-muted-foreground">{l.handle}</div>
                 </div>
-                <span className="flex items-center gap-1 font-mono text-xs text-muted-foreground"><Eye size={11} />{(views[l.name] ?? 0) + 12}</span>
                 <button aria-label={`Copy ${l.name}`} className="icon-btn" onClick={() => { navigator.clipboard.writeText(l.handle); toast.success(`${l.name} copied`, { description: l.handle }); }}><Copy size={14} /></button>
-                <a aria-label={`Open ${l.name}`} className="icon-btn" href={l.url} target="_blank" rel="noreferrer" onClick={() => bump(l.name)}><ExternalLink size={14} /></a>
+                <a aria-label={`Open ${l.name}`} className="icon-btn" href={l.url} target="_blank" rel="noreferrer"><ExternalLink size={14} /></a>
               </li>
             ))}
           </ul>

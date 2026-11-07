@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Pause, Play, SkipBack, SkipForward, Volume2 } from "lucide-react";
+import { getMediaUrl } from "@/lib/media";
 
 type Track = { title: string; artist: string; bpm: number; notes: number[]; url?: string };
 const LENGTH = 90; // seconds per synth loop
@@ -39,13 +40,19 @@ export function AudioPlayer({ tracks, index, setIndex, autoplay }: { tracks: Tra
     const a = audioRef.current;
     if (!playing || !track || !a) { a?.pause(); return; }
     if (track.url) {
-      if (srcRef.current !== track.url) { srcRef.current = track.url; a.src = track.url; }
-      a.volume = vol;
-      a.play().catch(() => setPlaying(false));
+      let alive = true;
+      const url = track.url;
+      void getMediaUrl(url).then((u) => {
+        if (!alive) return;
+        if (!u) { setPlaying(false); return; }
+        if (srcRef.current !== url) { srcRef.current = url; a.src = u; }
+        a.volume = vol;
+        a.play().catch(() => setPlaying(false));
+      });
       const onT = () => { setPos(a.currentTime); if (a.duration && isFinite(a.duration)) setDur(a.duration); };
       a.addEventListener("timeupdate", onT);
       a.addEventListener("ended", next);
-      return () => { a.removeEventListener("timeupdate", onT); a.removeEventListener("ended", next); a.pause(); };
+      return () => { alive = false; a.removeEventListener("timeupdate", onT); a.removeEventListener("ended", next); a.pause(); };
     }
     a.pause();
     ensureCtx();

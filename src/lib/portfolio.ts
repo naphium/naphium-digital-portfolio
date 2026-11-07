@@ -14,6 +14,8 @@ export const DEFAULT_DATA = {
     fontBody: "Geist",
     fontHeading: "Geist",
     fontMono: "Geist Mono",
+    radius: 8,
+    cardBorders: false,
   },
   settings: { autoplayMusic: true, defaultBanner: "tactical", showBannerPicker: true },
   profile: {
@@ -151,9 +153,16 @@ export function mergeData(p: Record<string, unknown> = {}): PortfolioData {
 
 export const BASE_DATA = mergeData();
 
+const DRAFT = "naphium:draft";
+/** Unsaved admin edits, shown only in the admin live preview (/?preview). */
+export function saveDraft(d: PortfolioData) {
+  try { localStorage.setItem(DRAFT, JSON.stringify(d)); } catch {}
+}
+
 export function loadData(): PortfolioData {
   try {
-    const raw = localStorage.getItem(KEY);
+    const preview = typeof location !== "undefined" && new URLSearchParams(location.search).has("preview");
+    const raw = (preview && localStorage.getItem(DRAFT)) || localStorage.getItem(KEY);
     if (raw) return mergeData(JSON.parse(raw));
   } catch {}
   return BASE_DATA;
@@ -169,7 +178,12 @@ export function resetData() {
 
 export function usePortfolio() {
   const [data, setData] = useState<PortfolioData>(BASE_DATA);
-  useEffect(() => setData(loadData()), []);
+  useEffect(() => {
+    const f = () => setData(loadData());
+    f();
+    window.addEventListener("storage", f);
+    return () => window.removeEventListener("storage", f);
+  }, []);
   return data;
 }
 
@@ -193,6 +207,8 @@ export function useApplyTheme(t: PortfolioData["theme"]) {
     set("--muted-foreground", t.mutedText);
     set("--border", `color-mix(in oklab, ${t.accent} 45%, transparent)`);
     set("--input", `color-mix(in oklab, ${t.accent} 60%, transparent)`);
+    if (typeof t.radius === "number") s.setProperty("--radius", `${t.radius}px`);
+    document.documentElement.dataset["borders"] = t.cardBorders ? "on" : "off";
     const fonts = { "--app-sans": t.fontBody, "--app-heading": t.fontHeading, "--app-mono": t.fontMono };
     document.querySelectorAll("link[data-theme-font]").forEach((l) => l.remove());
     for (const [k, f] of Object.entries(fonts)) {
