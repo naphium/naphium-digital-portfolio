@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
-import { DEFAULT_DATA, loadData, resetData, saveData, type PortfolioData } from "@/lib/portfolio";
+import { BASE_DATA, blank, loadData, mergeData, resetData, saveData, useApplyTheme, type PortfolioData } from "@/lib/portfolio";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -21,22 +21,35 @@ export const Route = createFileRoute("/admin")({
 
 type V = unknown;
 const label = (k: string) => k.replace(/([A-Z])/g, " $1").replace(/^./, (c) => c.toUpperCase());
-
-function blank(v: V): V {
-  if (typeof v === "string") return "";
-  if (typeof v === "number") return 0;
-  if (Array.isArray(v)) return [];
-  if (v && typeof v === "object") return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, blank(x)]));
-  return "";
-}
+const IMG = /^(image|icon|avatarUrl|bannerUrl)$/;
+const FONTS = ["Geist", "Geist Mono", "Inter Tight", "Manrope", "Plus Jakarta Sans", "Outfit", "Sora", "DM Sans", "Space Grotesk", "Figtree", "Onest", "Urbanist", "IBM Plex Sans", "IBM Plex Mono", "JetBrains Mono", "Space Mono", "Fira Code", "Hind Siliguri", "Noto Sans Bengali"];
 
 function Field({ name, value, onChange }: { name: string; value: V; onChange: (v: V) => void }) {
+  if (typeof value === "boolean")
+    return <label className="flex items-center gap-2"><input type="checkbox" className="h-4 w-4 accent-[var(--primary)]" checked={value} onChange={(e) => onChange(e.target.checked)} /><span className="text-sm text-foreground">{label(name)}</span></label>;
   if (typeof value === "number")
     return <label className="block"><span className="admin-label">{label(name)}</span><input type="number" className="field" value={value} onChange={(e) => onChange(+e.target.value)} /></label>;
-  if (typeof value === "string")
+  if (typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value))
     return (
       <label className="block"><span className="admin-label">{label(name)}</span>
-        {value.length > 60 ? <textarea className="field min-h-20" value={value} onChange={(e) => onChange(e.target.value)} /> : <input className="field" value={value} onChange={(e) => onChange(e.target.value)} />}
+        <div className="flex gap-2"><input type="color" className="h-9 w-12 shrink-0 cursor-pointer rounded border border-input bg-transparent" value={value} onChange={(e) => onChange(e.target.value)} /><input className="field font-mono" value={value} onChange={(e) => onChange(e.target.value)} /></div>
+      </label>
+    );
+  if (typeof value === "string" && IMG.test(name))
+    return (
+      <label className="block"><span className="admin-label">{label(name)} — paste a link or upload</span>
+        <div className="flex items-center gap-2">
+          {value && <img src={value} alt="" className="h-9 w-9 shrink-0 rounded object-cover" />}
+          <input className="field" placeholder="https://…" value={value.startsWith("data:") ? "(uploaded image)" : value} onChange={(e) => onChange(e.target.value)} />
+          <span className="chip cursor-pointer whitespace-nowrap">Upload<input type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (!f) return; if (f.size > 1.5e6) { toast.error("Image too big (max 1.5 MB) — use a link instead"); return; } const r = new FileReader(); r.onload = () => onChange(r.result as string); r.readAsDataURL(f); }} /></span>
+          {value && <button type="button" aria-label="Clear" className="icon-btn shrink-0" onClick={() => onChange("")}><Trash2 size={14} /></button>}
+        </div>
+      </label>
+    );
+  if (typeof value === "string")
+    return (
+      <label className="block"><span className="admin-label">{label(name)}{name === "url" ? " (audio file link: mp3 / ogg)" : name === "discordId" ? " (numeric user ID — join discord.gg/lanyard for live status)" : ""}</span>
+        {value.length > 60 ? <textarea className="field min-h-20" value={value} onChange={(e) => onChange(e.target.value)} /> : <input className="field" list={name.startsWith("font") ? "font-list" : undefined} value={value} onChange={(e) => onChange(e.target.value)} />}
       </label>
     );
   if (Array.isArray(value))
@@ -70,6 +83,7 @@ function Admin() {
   const [ok, setOk] = useState(false);
   const [section, setSection] = useState<keyof PortfolioData>("profile");
   useEffect(() => { setData(loadData()); setOk(sessionStorage.getItem("naphium:admin") === "1"); }, []);
+  useApplyTheme((data ?? BASE_DATA).theme);
   if (!data) return null;
 
   if (!ok)
@@ -84,7 +98,7 @@ function Admin() {
       </main>
     );
 
-  const keys = Object.keys(DEFAULT_DATA) as (keyof PortfolioData)[];
+  const keys = Object.keys(BASE_DATA) as (keyof PortfolioData)[];
   return (
     <main className="mx-auto max-w-4xl px-4 py-8 pb-24">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -92,19 +106,21 @@ function Admin() {
         <div className="flex flex-wrap gap-2">
           <Link to="/" className="chip">View site</Link>
           <button className="chip" onClick={() => { const b = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }); const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = "naphium-data.json"; a.click(); }}>Export</button>
-          <label className="chip cursor-pointer">Import<input type="file" accept="application/json" hidden onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; try { setData({ ...DEFAULT_DATA, ...JSON.parse(await f.text()) }); toast.success("Imported — press Save"); } catch { toast.error("Invalid file"); } }} /></label>
-          <button className="chip" onClick={() => { if (confirm("Reset everything to defaults?")) { resetData(); setData(DEFAULT_DATA); toast.success("Reset"); } }}>Reset</button>
+          <label className="chip cursor-pointer">Import<input type="file" accept="application/json" hidden onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; try { setData(mergeData(JSON.parse(await f.text()))); toast.success("Imported — press Save"); } catch { toast.error("Invalid file"); } }} /></label>
+          <button className="chip" onClick={() => { if (confirm("Reset everything to defaults?")) { resetData(); setData(BASE_DATA); toast.success("Reset"); } }}>Reset</button>
           <button className="chip" onClick={() => { sessionStorage.removeItem("naphium:admin"); setOk(false); }}>Lock</button>
         </div>
       </div>
-      <nav className="mt-4 grid grid-cols-3 gap-1.5 sm:grid-cols-6">
+      <nav className="mt-4 grid grid-cols-3 gap-1.5 sm:grid-cols-7">
         {keys.map((k) => <button key={k} onClick={() => setSection(k)} className={`tab-btn ${section === k ? "tab-active" : ""}`}>{label(k)}</button>)}
       </nav>
+      <datalist id="font-list">{FONTS.map((f) => <option key={f} value={f} />)}</datalist>
+      <p className="mt-3 font-mono text-xs text-muted-foreground">Fonts: type any Google Fonts name. Colors and fonts preview live here before saving.</p>
       <div className="panel mt-4 p-4">
         <Field name={section} value={data[section]} onChange={(v) => setData({ ...data, [section]: v } as PortfolioData)} />
       </div>
       <div className="fixed inset-x-0 bottom-0 border-t border-border bg-background/90 p-3 backdrop-blur">
-        <div className="mx-auto flex max-w-4xl justify-end"><button className="btn-primary" onClick={() => { saveData(data); toast.success("Saved"); }}>Save changes</button></div>
+        <div className="mx-auto flex max-w-4xl justify-end"><button className="btn-primary" onClick={() => { try { saveData(data); toast.success("Saved"); } catch { toast.error("Storage full — use image links instead of uploads"); } }}>Save changes</button></div>
       </div>
     </main>
   );

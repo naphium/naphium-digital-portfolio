@@ -2,6 +2,20 @@ import { useEffect, useState } from "react";
 
 export const DEFAULT_DATA = {
   admin: { passcode: "naphium" },
+  theme: {
+    background: "#000000",
+    surface: "#1f3149",
+    card: "#142030",
+    primary: "#a9c4dc",
+    primaryText: "#000000",
+    accent: "#4f6f8f",
+    text: "#ffffff",
+    mutedText: "#9fb3c8",
+    fontBody: "Geist",
+    fontHeading: "Geist",
+    fontMono: "Geist Mono",
+  },
+  settings: { autoplayMusic: true, defaultBanner: "tactical", showBannerPicker: true },
   profile: {
     name: "Md. Nafim Muttaki",
     nickname: "n a f i m",
@@ -12,6 +26,9 @@ export const DEFAULT_DATA = {
     bio: "HSC Science student from Rajshahi building fast web tools, tiny firmware and clean visual identities. I like software that loads instantly and gets out of the way.",
     avatarInitials: "NM",
     statusLabel: "naphium ⚡ DEV",
+    avatarUrl: "",
+    bannerUrl: "",
+    discordId: "",
   },
   presence: [
     { mode: "Coding", detail: "Editing portfolio.tsx", state: "VS Code · TypeScript" },
@@ -38,7 +55,7 @@ export const DEFAULT_DATA = {
     ],
   },
   links: [
-    { category: "Developer", name: "GitHub", handle: "@naphium", url: "https://github.com/naphium" },
+    { category: "Developer", name: "GitHub", handle: "@naphium", url: "https://github.com/naphium", icon: "" },
     { category: "Developer", name: "Email", handle: "naphium@gmail.com", url: "mailto:naphium@gmail.com" },
     { category: "Developer", name: "Discord", handle: "naphium", url: "https://discord.com" },
     { category: "Social", name: "Instagram", handle: "@naphium", url: "https://instagram.com/naphium" },
@@ -49,7 +66,7 @@ export const DEFAULT_DATA = {
     { category: "Gaming", name: "Roblox", handle: "naphium", url: "https://roblox.com" },
   ],
   projects: [
-    { category: "Web App", title: "Naphium Hub", desc: "This portfolio — a single-page dashboard with a canvas topo background, presence widget and a synth player.", tags: ["React", "Canvas", "Web Audio"], status: "Live" },
+    { category: "Web App", title: "Naphium Hub", desc: "This portfolio — a single-page dashboard with a canvas topo background, presence widget and a synth player.", tags: ["React", "Canvas", "Web Audio"], status: "Live", link: "", image: "" },
     { category: "Client Tool", title: "Naphium Chess", desc: "Browser chess client with move analysis, PGN import and keyboard-first controls.", tags: ["TypeScript", "Chess.js"], status: "Beta" },
     { category: "Client Tool", title: "Stockfish Wasm Runner", desc: "Runs Stockfish compiled to WebAssembly in a worker so analysis never blocks the UI.", tags: ["Wasm", "Web Workers"], status: "Active" },
     { category: "Firmware", title: "ESP8266 Room Node", desc: "Temperature and humidity node pushing readings over MQTT, with OTA updates and deep-sleep.", tags: ["C++", "Arduino", "MQTT"], status: "Deployed" },
@@ -84,7 +101,7 @@ export const DEFAULT_DATA = {
     { section: "Software", items: [{ label: "Editor", value: "VS Code · JetBrains Mono · One Dark" }, { label: "Extensions", value: "ESLint, Prettier, PlatformIO, GitLens" }, { label: "Minecraft", value: "Fabric + Sodium + Lithium" }, { label: "Terminal", value: "Windows Terminal + zsh (WSL)" }] },
   ],
   album: [
-    { title: "Contour 01", caption: "Rajshahi elevation study", hue: 210 },
+    { title: "Contour 01", caption: "Rajshahi elevation study", hue: 210, image: "" },
     { title: "Grid Signal", caption: "Tactical grid poster", hue: 200 },
     { title: "Padma Dusk", caption: "River at sunset, vector", hue: 225 },
     { title: "Festival Mark", caption: "নিরুদ্বেগ-২৬ logo sketch", hue: 195 },
@@ -92,7 +109,7 @@ export const DEFAULT_DATA = {
     { title: "Night Desk", caption: "Workstation at 2 AM", hue: 230 },
   ],
   tracks: [
-    { title: "Rajshahi Night", artist: "naphium synth", bpm: 84, notes: [220, 261.6, 329.6, 392, 329.6, 261.6, 196, 246.9] },
+    { title: "Rajshahi Night", artist: "naphium synth", bpm: 84, notes: [220, 261.6, 329.6, 392, 329.6, 261.6, 196, 246.9], url: "" },
     { title: "Padma Drift", artist: "naphium synth", bpm: 72, notes: [174.6, 220, 261.6, 220, 196, 246.9, 293.7, 246.9] },
     { title: "Wasm Pulse", artist: "naphium synth", bpm: 110, notes: [146.8, 220, 293.7, 349.2, 293.7, 220, 174.6, 261.6] },
   ],
@@ -107,12 +124,39 @@ export const DEFAULT_DATA = {
 export type PortfolioData = typeof DEFAULT_DATA;
 const KEY = "naphium:data";
 
+export function blank(v: unknown): unknown {
+  if (typeof v === "string") return "";
+  if (typeof v === "number") return 0;
+  if (typeof v === "boolean") return false;
+  if (Array.isArray(v)) return [];
+  if (v && typeof v === "object") return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, blank(x)]));
+  return "";
+}
+
+/** Fill in fields added in newer versions so old saved data keeps working. */
+export function mergeData(p: Record<string, unknown> = {}): PortfolioData {
+  const out: Record<string, unknown> = {};
+  const def = DEFAULT_DATA as Record<string, unknown>;
+  for (const k of Object.keys(def)) {
+    const d = def[k];
+    const v = p[k] ?? d;
+    if (Array.isArray(d) && Array.isArray(v) && d[0] && typeof d[0] === "object") {
+      const shape = blank(d[0]) as object;
+      out[k] = v.map((x) => ({ ...shape, ...x }));
+    } else if (d && typeof d === "object" && !Array.isArray(d) && v && typeof v === "object") out[k] = { ...d, ...v };
+    else out[k] = v;
+  }
+  return out as PortfolioData;
+}
+
+export const BASE_DATA = mergeData();
+
 export function loadData(): PortfolioData {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) return { ...DEFAULT_DATA, ...JSON.parse(raw) };
+    if (raw) return mergeData(JSON.parse(raw));
   } catch {}
-  return DEFAULT_DATA;
+  return BASE_DATA;
 }
 
 export function saveData(d: PortfolioData) {
@@ -124,11 +168,44 @@ export function resetData() {
 }
 
 export function usePortfolio() {
-  const [data, setData] = useState<PortfolioData>(DEFAULT_DATA);
+  const [data, setData] = useState<PortfolioData>(BASE_DATA);
   useEffect(() => setData(loadData()), []);
   return data;
 }
 
+const fontLink = (f: string, w: boolean) =>
+  `https://fonts.googleapis.com/css2?family=${encodeURIComponent(f.trim()).replace(/%20/g, "+")}${w ? ":wght@400;500;600;700" : ""}&display=swap`;
+
+export function useApplyTheme(t: PortfolioData["theme"]) {
+  useEffect(() => {
+    const s = document.documentElement.style;
+    const set = (k: string, v?: string) => v && s.setProperty(k, v);
+    set("--background", t.background);
+    set("--foreground", t.text);
+    set("--card", t.card);
+    set("--popover", t.card);
+    set("--muted", t.card);
+    set("--secondary", t.surface);
+    set("--primary", t.primary);
+    set("--ring", t.primary);
+    set("--primary-foreground", t.primaryText);
+    set("--accent", t.accent);
+    set("--muted-foreground", t.mutedText);
+    set("--border", `color-mix(in oklab, ${t.accent} 45%, transparent)`);
+    set("--input", `color-mix(in oklab, ${t.accent} 60%, transparent)`);
+    const fonts = { "--app-sans": t.fontBody, "--app-heading": t.fontHeading, "--app-mono": t.fontMono };
+    document.querySelectorAll("link[data-theme-font]").forEach((l) => l.remove());
+    for (const [k, f] of Object.entries(fonts)) {
+      if (!f?.trim()) continue;
+      set(k, `"${f.trim()}", ${k === "--app-mono" ? "ui-monospace, monospace" : "system-ui, sans-serif"}`);
+      for (const w of [true, false]) {
+        const l = document.createElement("link");
+        l.rel = "stylesheet"; l.href = fontLink(f, w); l.dataset["themeFont"] = "1";
+        document.head.appendChild(l);
+      }
+    }
+  }, [t]);
+}
 export function useLocal<T>(key: string, initial: T) {
   const [v, setV] = useState<T>(initial);
   useEffect(() => {
