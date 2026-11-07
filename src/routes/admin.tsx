@@ -27,7 +27,7 @@ export const Route = createFileRoute("/admin")({
 type V = unknown;
 type Key = keyof PortfolioData;
 const label = (k: string) => k.replace(/([A-Z])/g, " $1").replace(/^./, (c) => c.toUpperCase());
-const IMG = /^(image|icon|avatarUrl|bannerUrl)$/;
+const IMG = /^(image|icon|avatarUrl|bannerUrl|faviconUrl)$/;
 const FONTS = [
   "Geist", "Geist Mono", "Inter", "Inter Tight", "Manrope", "Plus Jakarta Sans", "Outfit", "Sora", "DM Sans", "Space Grotesk", "Figtree", "Onest",
   "Urbanist", "Lexend", "Albert Sans", "Be Vietnam Pro", "Red Hat Display", "Instrument Sans", "Hanken Grotesk", "Schibsted Grotesk",
@@ -38,7 +38,7 @@ const FONTS = [
 const SECTIONS: Record<Key, { icon: typeof User; desc: string }> = {
   profile: { icon: User, desc: "Name, bio, photo, banner and Discord ID." },
   theme: { icon: Palette, desc: "Colors, fonts, corner roundness and card borders." },
-  settings: { icon: Settings, desc: "Site title, default mode, start tab, music volume/shuffle/autoplay and what to show. The admin password is set on the server (ADMIN_PASSWORD)." },
+  settings: { icon: Settings, desc: "Site title, default mode, start tab, music volume/shuffle/autoplay, footer text ({year} {username} {coords} {name} work as placeholders), announcement bar, page width and what to show. The admin password is set on the server (ADMIN_PASSWORD)." },
   tabs: { icon: LayoutList, desc: "Reorder the menu buttons with the arrows, rename them or hide them." },
   presence: { icon: Activity, desc: "Status shown when no Discord ID is set." },
   about: { icon: Info, desc: "Overview, philosophy and any number of sections (like Hardware or Metrics). Layout: list or grid." },
@@ -116,8 +116,8 @@ function Field({ name, value, onChange, root, top }: { name: string; value: V; o
         <select className="field" value={value} onChange={(e) => onChange(e.target.value)}>{["tactical", "contour", "cosmic", "slate"].map((b) => <option key={b}>{b}</option>)}</select>
       </label>
     );
-  if (typeof value === "string" && (name === "layout" || name === "defaultMode" || name === "defaultTab")) {
-    const opts = name === "layout" ? ["list", "grid"] : name === "defaultTab" ? BASE_DATA.tabs.map((t) => t.id) : ["dark", "light", "system"];
+  if (typeof value === "string" && (name === "layout" || name === "defaultMode" || name === "defaultTab" || name === "contentWidth")) {
+    const opts = name === "layout" ? ["list", "grid"] : name === "contentWidth" ? ["narrow", "normal", "wide"] : name === "defaultTab" ? BASE_DATA.tabs.map((t) => t.id) : ["dark", "light", "system"];
     return (
       <label className="block"><span className="admin-label">{label(name)}</span>
         <select className="field" value={value} onChange={(e) => onChange(e.target.value)}>{opts.map((b) => <option key={b}>{b}</option>)}</select>

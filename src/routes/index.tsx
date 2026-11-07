@@ -42,6 +42,38 @@ function Index() {
   const [sysLight, setSysLight] = useState(false);
   useEffect(() => { setSysLight(window.matchMedia("(prefers-color-scheme: light)").matches); }, []);
   useEffect(() => { if (st.siteTitle) document.title = st.siteTitle; }, [st.siteTitle]);
+  useEffect(() => {
+    if (st.metaDescription) document.querySelector('meta[name="description"]')?.setAttribute("content", st.metaDescription);
+    if (st.faviconUrl) {
+      let l = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+      if (!l) { l = document.createElement("link"); l.rel = "icon"; document.head.appendChild(l); }
+      l.href = st.faviconUrl;
+    }
+  }, [st.metaDescription, st.faviconUrl]);
+  useEffect(() => {
+    if (!st.rememberLastTab) return;
+    const t = localStorage.getItem("naphium:tab");
+    if (t) setTab(t as Tab);
+  }, [st.rememberLastTab]);
+  useEffect(() => { if (st.rememberLastTab && pick) localStorage.setItem("naphium:tab", pick); }, [pick, st.rememberLastTab]);
+  useEffect(() => {
+    if (!st.disableRightClick) return;
+    const h = (e: MouseEvent) => e.preventDefault();
+    document.addEventListener("contextmenu", h);
+    return () => document.removeEventListener("contextmenu", h);
+  }, [st.disableRightClick]);
+  const [showTop, setShowTop] = useState(false);
+  useEffect(() => {
+    const h = () => setShowTop(window.scrollY > 500);
+    window.addEventListener("scroll", h, { passive: true });
+    return () => window.removeEventListener("scroll", h);
+  }, []);
+  const width = st.contentWidth === "narrow" ? "max-w-3xl" : st.contentWidth === "wide" ? "max-w-7xl" : "max-w-5xl";
+  const footer = (st.footerText ?? "")
+    .replace(/\{year\}/g, String(new Date().getFullYear()))
+    .replace(/\{username\}/g, data.profile.username)
+    .replace(/\{coords\}/g, data.profile.coords)
+    .replace(/\{name\}/g, data.profile.name);
   const def = st.defaultMode === "system" ? (sysLight ? "light" : "dark") : st.defaultMode || "dark";
   const mode = (st.showModeToggle && m) || def;
   useApplyTheme(data.theme, mode);
@@ -50,11 +82,12 @@ function Index() {
   const start = tabs.some((t) => t.id === st.defaultTab) ? st.defaultTab : tabs[0]?.id;
   const tab = (pick && tabs.some((t) => t.id === pick) ? pick : start) as Tab | undefined;
   return (
-    <div className="min-h-screen pb-32">
-      {st.showBackground && <TopoCanvas />}
-      <main className="mx-auto max-w-5xl px-4 pt-6 sm:pt-12">
+    <div className={`min-h-screen pb-32 ${st.reduceMotion ? "reduce-motion" : ""}`}>
+      {st.showBackground && !st.reduceMotion && <TopoCanvas />}
+      {st.announcement && <div className="relative z-10 border-b border-border bg-primary/15 px-4 py-2 text-center text-xs text-foreground backdrop-blur">{st.announcement}</div>}
+      <main className={`mx-auto ${width} px-4 pt-6 sm:pt-12`}>
         <Hero data={data} mode={mode} toggle={st.showModeToggle ? () => setMode(mode === "light" ? "dark" : "light") : undefined} />
-        <nav className="panel mt-6 flex flex-wrap gap-1.5 p-1.5" aria-label="Sections">
+        <nav className={`panel mt-6 flex flex-wrap gap-1.5 p-1.5 ${st.stickyNav ? "sticky top-2 z-30" : ""}`} aria-label="Sections">
           {tabs.map((t) => (
             <button key={t.id} onClick={() => setTab(t.id as Tab)} className={`tab-btn flex-1 basis-[30%] sm:basis-[15%] lg:basis-0 ${tab === t.id ? "tab-active" : ""}`}>{t.label || t.id}</button>
           ))}
@@ -74,8 +107,10 @@ function Index() {
           {tab === "FAQ" && <Faq d={data} />}
         </section>
         {st.showFooter && <footer className="mt-12 text-center font-mono text-xs text-muted-foreground">
-          {data.profile.coords} · © {new Date().getFullYear()} {data.profile.username}
+          {footer}
+          {st.footerLinkUrl && <> · <a href={st.footerLinkUrl} target="_blank" rel="noreferrer" className="underline-offset-4 hover:text-foreground hover:underline">{st.footerLinkLabel || st.footerLinkUrl}</a></>}
         </footer>}
+        {st.showBackToTop && showTop && <button onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} aria-label="Back to top" className="icon-btn fixed bottom-28 right-4 z-40">↑</button>}
       </main>
       {st.showMusicPlayer && <AudioPlayer tracks={data.tracks} index={track} setIndex={setTrack} autoplay={st.autoplayMusic} volume={st.defaultVolume} shuffle={st.shuffleMusic} />}
     </div>
