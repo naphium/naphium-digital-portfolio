@@ -41,9 +41,9 @@ function Index() {
   return (
     <div className="min-h-screen pb-32">
       <TopoCanvas />
-      <main className="mx-auto max-w-5xl px-4 pt-6 sm:pt-10">
+      <main className="mx-auto max-w-5xl px-4 pt-6 sm:pt-12">
         <Hero data={data} />
-        <nav className="mt-8 grid grid-cols-3 gap-1.5 sm:grid-cols-6 lg:grid-cols-11" aria-label="Sections">
+        <nav className="panel mt-6 grid grid-cols-3 gap-1.5 p-1.5 sm:grid-cols-6 lg:grid-cols-11" aria-label="Sections">
           {TABS.map((t) => (
             <button key={t} onClick={() => setTab(t)} className={`tab-btn ${tab === t ? "tab-active" : ""}`}>{t}</button>
           ))}
@@ -95,10 +95,10 @@ function Hero({ data }: { data: PortfolioData }) {
           <div className="avatar">{p.avatarInitials}</div>
           <span className="status-dot" aria-label="Online" />
         </div>
-        <h1 className="mt-4 font-serif text-3xl text-foreground sm:text-4xl">{p.name}</h1>
+        <h1 className="text-gradient mt-4 font-serif text-5xl leading-none sm:text-6xl">{p.name}</h1>
         <p className="mt-1 font-mono text-xs tracking-widest text-muted-foreground">({p.nickname}) · @{p.username}</p>
         <p className="mt-2 font-mono text-[11px] text-muted-foreground">{p.location} · {time} BST</p>
-        <p className="mt-3 text-sm text-primary">{p.tagline}</p>
+        <p className="mt-4 font-serif text-xl italic text-primary">{p.tagline}</p>
         <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">{p.bio}</p>
 
         <div className="mt-6 w-full max-w-md rounded-md border border-border bg-card p-3 text-left">
@@ -126,7 +126,7 @@ function Hero({ data }: { data: PortfolioData }) {
   );
 }
 
-const H = ({ children }: { children: React.ReactNode }) => <h2 className="mb-3 font-serif text-xl text-foreground">{children}</h2>;
+const H = ({ children }: { children: React.ReactNode }) => <h2 className="mb-3 font-serif text-2xl text-foreground">{children}</h2>;
 const Card = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => <div className={`panel p-4 ${className}`}>{children}</div>;
 const KV = ({ items }: { items: { label: string; value: string }[] }) => (
   <dl className="divide-y divide-border">
@@ -181,7 +181,7 @@ function Projects({ d }: { d: PortfolioData }) {
       {d.projects.map((p, i) => (
         <Card key={i}>
           <div className="flex items-center justify-between font-mono text-[11px] text-muted-foreground"><span>{p.category}</span><span className="chip chip-active">{p.status}</span></div>
-          <h3 className="mt-2 font-serif text-lg text-foreground">{p.title}</h3>
+          <h3 className="mt-2 font-serif text-2xl text-foreground">{p.title}</h3>
           <p className="mt-1 text-sm text-muted-foreground">{p.desc}</p>
           <div className="mt-3 flex flex-wrap gap-1">{p.tags.map((t) => <span key={t} className="chip">{t}</span>)}</div>
         </Card>
