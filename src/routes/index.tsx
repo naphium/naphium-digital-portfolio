@@ -128,7 +128,7 @@ const fmtEl = (s: number) => {
   return `${h ? `${h}:` : ""}${String(m).padStart(2, "0")}:${String(x).padStart(2, "0")}`;
 };
 
-function Hero({ data, mode, toggle }: { data: PortfolioData; mode: string; toggle?: () => void }) {
+function Hero({ data, mode, toggle }: { data: PortfolioData; mode: string; toggle?: (() => void) | undefined }) {
   const p = data.profile;
   const now = useNow();
   const lan = useLanyard(p.discordId);
