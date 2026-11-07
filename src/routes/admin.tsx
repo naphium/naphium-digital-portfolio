@@ -168,10 +168,10 @@ function Field({ name, value, onChange, root, top }: { name: string; value: V; o
     return (
       <div className="space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="admin-label !mb-0">{label(name)} · {value.length}</span>
+          <span className="admin-label !mb-0">{label(name === "sections" ? "section boxes" : name)} · {value.length}</span>
           <div className="flex gap-1.5">
             {top && root === "tracks" && <label className="chip flex cursor-pointer items-center gap-1"><Music size={11} />Upload songs<input type="file" accept="audio/*" multiple hidden onChange={(e) => bulk(e.target.files)} /></label>}
-            <button type="button" className="chip chip-active flex items-center gap-1" onClick={() => onChange([...value, value.length ? blank(value[0]) : ""])}><Plus size={11} />Add</button>
+            <button type="button" className="chip chip-active flex items-center gap-1" onClick={() => onChange([...value, value.length ? blank(value[0]) : ""])}><Plus size={11} />{name === "sections" ? "Add box" : "Add"}</button>
           </div>
         </div>
         {value.map((item, i) =>
@@ -219,7 +219,7 @@ function Admin() {
   const ref = useRef<PortfolioData | null>(null);
   const frame = useRef<HTMLIFrameElement>(null);
   ref.current = data;
-  useEffect(() => { setData(loadData()); setOk(sessionStorage.getItem("naphium:admin") === "1"); }, []);
+  useEffect(() => { setData(mergeData(loadData())); setOk(sessionStorage.getItem("naphium:admin") === "1"); }, []);
   useApplyTheme((data ?? BASE_DATA).theme);
   useEffect(() => { if (data) saveDraft(data); }, [data]);
   const save = () => {
@@ -291,7 +291,7 @@ function Admin() {
                 </div>
               </div>
             )}
-            <div className="mt-6"><Field top name={section} root={section} value={data[section]} onChange={(v) => update({ ...data, [section]: v } as PortfolioData)} /></div>
+            <div className="mt-6"><Field top name={section} root={section} value={data[section] ?? BASE_DATA[section]} onChange={(v) => update({ ...data, [section]: v } as PortfolioData)} /></div>
           </div>
         </main>
         {preview && (

@@ -40,7 +40,8 @@ function Index() {
   const [m, setMode] = useLocal<string>("naphium:mode", "");
   const mode = m || data.settings.defaultMode || "dark";
   useApplyTheme(data.theme, mode);
-  const tabs = data.tabs.filter((t) => t.visible && (TABS as readonly string[]).includes(t.id));
+  const known = data.tabs.filter((t) => (TABS as readonly string[]).includes(t.id));
+  const tabs = [...known, ...TABS.filter((id) => !known.some((t) => t.id === id)).map((id) => ({ id, label: id, visible: true }))].filter((t) => t.visible);
   const tab = (pick && tabs.some((t) => t.id === pick) ? pick : tabs[0]?.id) as Tab | undefined;
   return (
     <div className="min-h-screen pb-32">
@@ -257,7 +258,7 @@ function Links({ d }: { d: PortfolioData }) {
                   <div className="text-sm text-foreground">{l.name}</div>
                   <div className="truncate font-mono text-xs text-muted-foreground">{l.handle}</div>
                 </div>
-                <button aria-label={`Copy ${l.name}`} className="icon-btn" onClick={() => { navigator.clipboard.writeText(l.handle); toast.success(`${l.name} copied`, { description: l.handle }); }}><Copy size={14} /></button>
+                <button aria-label={`Copy ${l.name}`} className="icon-btn" onClick={() => { const v = l.url.replace(/^mailto:/, "") || l.handle; navigator.clipboard.writeText(v); toast.success(`${l.name} link copied`, { description: v }); }}><Copy size={14} /></button>
                 <a aria-label={`Open ${l.name}`} className="icon-btn" href={l.url} target="_blank" rel="noreferrer"><ExternalLink size={14} /></a>
               </li>
             ))}

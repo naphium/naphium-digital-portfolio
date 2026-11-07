@@ -134,7 +134,7 @@ export function blank(v: unknown): unknown {
   if (typeof v === "string") return "";
   if (typeof v === "number") return 0;
   if (typeof v === "boolean") return false;
-  if (Array.isArray(v)) return [];
+  if (Array.isArray(v)) return v[0] && typeof v[0] === "object" ? [blank(v[0])] : [];
   if (v && typeof v === "object") return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, blank(x)]));
   return "";
 }
@@ -152,6 +152,18 @@ export function mergeData(p: Record<string, unknown> = {}): PortfolioData {
     } else if (d && typeof d === "object" && !Array.isArray(d) && v && typeof v === "object") out[k] = { ...d, ...v };
     else out[k] = v;
   }
+  // Older saves kept Workstation/Academics as fixed hardware/metrics lists; turn them into editable sections.
+  const a = out["about"] as Record<string, unknown>;
+  const pa = (p["about"] ?? {}) as Record<string, unknown>;
+  if (!pa["sections"] && (pa["hardware"] || pa["metrics"])) {
+    a["sections"] = [
+      ...(pa["hardware"] ? [{ title: "Workstation", layout: "list", items: pa["hardware"] }] : []),
+      ...(pa["metrics"] ? [{ title: "Academics", layout: "grid", items: pa["metrics"] }] : []),
+    ];
+  }
+  delete a["hardware"]; delete a["metrics"];
+  const s = out["settings"] as Record<string, unknown>;
+  delete s["showBannerPicker"];
   return out as PortfolioData;
 }
 
