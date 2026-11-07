@@ -151,7 +151,7 @@
   .chip-active { border-color: color-mix(in oklab, var(--primary) 60%, transparent); color: var(--primary); background: color-mix(in oklab, var(--primary) 12%, transparent); }
   .icon-btn { display: inline-grid; place-items: center; height: 2rem; width: 2rem; border-radius: 9999px; background: color-mix(in oklab, var(--background) 40%, transparent); border: 1px solid var(--border); color: var(--muted-foreground); transition: all .2s; }
   .icon-btn:hover { color: var(--foreground); border-color: var(--primary); }
-  .field { width: 100%; background: color-mix(in oklab, var(--background) 70%, transparent); transition: border-color .2s, box-shadow .2s; border: 1px solid var(--input); border-radius: var(--radius); padding: 0.5rem 0.65rem; font-size: 0.875rem; color: var(--foreground); outline: none; }
+  .field { width: 100%; min-width: 0; background: color-mix(in oklab, var(--background) 70%, transparent); transition: border-color .2s, box-shadow .2s; border: 1px solid var(--input); border-radius: var(--radius); padding: 0.5rem 0.65rem; font-size: 0.875rem; color: var(--foreground); outline: none; }
   .field:focus { border-color: var(--ring); box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 20%, transparent); }
   .btn-primary { background: linear-gradient(180deg, var(--foreground), var(--primary)); color: var(--primary-foreground); border-radius: 9999px; padding: 0.6rem 1.2rem; font-weight: 600; font-size: 13px; transition: box-shadow .2s; }
   .btn-primary:hover { box-shadow: var(--glow); }

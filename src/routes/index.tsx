@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Copy, ExternalLink, Globe, Mail, X } from "lucide-react";
+import { Copy, ExternalLink, Globe, Mail, Moon, Sun, X } from "lucide-react";
 import { TopoCanvas } from "@/components/TopoCanvas";
 import { AudioPlayer } from "@/components/AudioPlayer";
 import { useApplyTheme, useLocal, usePortfolio, type PortfolioData } from "@/lib/portfolio";
@@ -22,7 +22,6 @@ export const Route = createFileRoute("/")({
 
 const TABS = ["About", "Links", "Projects", "Skills", "Timeline", "Goals", "Setup", "Album", "Guestbook", "Audio", "FAQ"] as const;
 type Tab = (typeof TABS)[number];
-const BANNERS = ["tactical", "contour", "cosmic", "slate"] as const;
 
 function useNow() {
   const [now, setNow] = useState<Date | null>(null);
@@ -36,20 +35,25 @@ function useNow() {
 
 function Index() {
   const data = usePortfolio();
-  const [tab, setTab] = useState<Tab>("About");
+  const [pick, setTab] = useState<Tab | null>(null);
   const [track, setTrack] = useState(0);
-  useApplyTheme(data.theme);
+  const [m, setMode] = useLocal<string>("naphium:mode", "");
+  const mode = m || data.settings.defaultMode || "dark";
+  useApplyTheme(data.theme, mode);
+  const tabs = data.tabs.filter((t) => t.visible && (TABS as readonly string[]).includes(t.id));
+  const tab = (pick && tabs.some((t) => t.id === pick) ? pick : tabs[0]?.id) as Tab | undefined;
   return (
     <div className="min-h-screen pb-32">
       <TopoCanvas />
       <main className="mx-auto max-w-5xl px-4 pt-6 sm:pt-12">
-        <Hero data={data} />
-        <nav className="panel mt-6 grid grid-cols-3 gap-1.5 p-1.5 sm:grid-cols-6 lg:grid-cols-11" aria-label="Sections">
-          {TABS.map((t) => (
-            <button key={t} onClick={() => setTab(t)} className={`tab-btn ${tab === t ? "tab-active" : ""}`}>{t}</button>
+        <Hero data={data} mode={mode} toggle={() => setMode(mode === "light" ? "dark" : "light")} />
+        <nav className="panel mt-6 flex flex-wrap gap-1.5 p-1.5" aria-label="Sections">
+          {tabs.map((t) => (
+            <button key={t.id} onClick={() => setTab(t.id as Tab)} className={`tab-btn flex-1 basis-[30%] sm:basis-[15%] lg:basis-0 ${tab === t.id ? "tab-active" : ""}`}>{t.label || t.id}</button>
           ))}
         </nav>
         <section className="mt-6 animate-in fade-in duration-300" key={tab}>
+          {!tab && <p className="text-center text-sm text-muted-foreground">No sections visible.</p>}
           {tab === "About" && <About d={data} />}
           {tab === "Links" && <Links d={data} />}
           {tab === "Projects" && <Projects d={data} />}
@@ -117,18 +121,21 @@ const fmtEl = (s: number) => {
   return `${h ? `${h}:` : ""}${String(m).padStart(2, "0")}:${String(x).padStart(2, "0")}`;
 };
 
-function Hero({ data }: { data: PortfolioData }) {
+function Hero({ data, mode, toggle }: { data: PortfolioData; mode: string; toggle: () => void }) {
   const p = data.profile;
   const now = useNow();
   const lan = useLanyard(p.discordId);
-  const [pick, setPick] = useState<string | null>(null);
-  const banner = pick ?? data.settings.defaultBanner;
+  const banner = data.settings.defaultBanner;
+  const did = p.discordId?.trim();
+  const [dcBanner, setDcBanner] = useState(true);
+  useEffect(() => setDcBanner(true), [did]);
   const [act, setAct] = useState(0);
   const [since, setSince] = useState<number | null>(null);
   useEffect(() => setSince(Date.now()), [act]);
   const time = now?.toLocaleTimeString("en-GB", { timeZone: "Asia/Dhaka" }) ?? "--:--:--";
   const du = lan?.discord_user;
-  const avatar = p.avatarUrl || (du?.avatar ? `https://cdn.discordapp.com/avatars/${du.id}/${du.avatar}.png?size=256` : "");
+  const dcAvatar = du?.avatar ? `https://cdn.discordapp.com/avatars/${du.id}/${du.avatar}.${du.avatar.startsWith("a_") ? "gif" : "png"}?size=256` : did ? `https://dcdn.dstn.to/avatars/${did}` : "";
+  const avatar = p.avatarUrl || dcAvatar;
 
   const rows: { img?: string | undefined; mode: string; title: string; sub: string; start: number | null }[] = [];
   let label = p.statusLabel;
@@ -152,13 +159,8 @@ function Hero({ data }: { data: PortfolioData }) {
         className={`banner ${p.bannerUrl ? "" : `banner-${banner}`} relative h-32 sm:h-44`}
         style={p.bannerUrl ? { backgroundImage: `url("${p.bannerUrl}")`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
       >
-        {!p.bannerUrl && data.settings.showBannerPicker && (
-          <div className="absolute right-2 top-2 flex gap-1">
-            {BANNERS.map((b) => (
-              <button key={b} onClick={() => setPick(b)} className={`chip ${banner === b ? "chip-active" : ""}`}>{b}</button>
-            ))}
-          </div>
-        )}
+        {!p.bannerUrl && did && dcBanner && <img src={`https://dcdn.dstn.to/banners/${did}`} alt="" onError={() => setDcBanner(false)} className="absolute inset-0 h-full w-full object-cover" />}
+        <button onClick={toggle} aria-label={mode === "light" ? "Switch to dark mode" : "Switch to light mode"} className="icon-btn absolute right-2 top-2 bg-background/60 backdrop-blur">{mode === "light" ? <Moon size={14} /> : <Sun size={14} />}</button>
         <span className="absolute bottom-2 left-3 font-mono text-xs text-muted-foreground">{p.coords}</span>
       </div>
       <div className="-mt-12 flex flex-col items-center px-4 pb-6 text-center">
@@ -174,7 +176,7 @@ function Hero({ data }: { data: PortfolioData }) {
 
         <div className="mt-6 w-full max-w-md rounded-2xl bg-background/40 p-3 text-left backdrop-blur">
           <div className="flex items-center justify-between gap-2">
-            <span className="flex min-w-0 items-center gap-2 font-mono text-xs text-foreground"><span className="live-dot shrink-0" /><span className="truncate">{label}</span></span>
+            <span className="flex min-w-0 items-center gap-2 font-mono text-xs text-foreground">{lan && dcAvatar ? <img src={dcAvatar} alt="" className="h-6 w-6 shrink-0 rounded-full object-cover" /> : null}<span className="live-dot shrink-0" /><span className="truncate">{label}</span></span>
             {!lan && (
               <div className="flex gap-1">
                 {data.presence.map((x, i) => (
@@ -227,9 +229,15 @@ function About({ d }: { d: PortfolioData }) {
   return (
     <div className="grid gap-4 md:grid-cols-2">
       <Card className="md:col-span-2"><H>Overview</H><p className="text-sm leading-relaxed text-muted-foreground">{d.about.overview}</p></Card>
-      <Card><H>Engineering philosophy</H><p className="text-sm leading-relaxed text-muted-foreground">{d.about.philosophy}</p></Card>
-      <Card><H>Academics</H><div className="grid grid-cols-2 gap-2">{d.about.metrics.map((m, i) => (<div key={i} className="rounded-lg bg-background/40 p-3"><div className="font-serif text-lg text-foreground">{m.value}</div><div className="font-mono text-xs text-muted-foreground">{m.label}</div></div>))}</div></Card>
-      <Card className="md:col-span-2"><H>Workstation</H><KV items={d.about.hardware} /></Card>
+      {d.about.philosophy && <Card><H>Engineering philosophy</H><p className="text-sm leading-relaxed text-muted-foreground">{d.about.philosophy}</p></Card>}
+      {(d.about.sections ?? []).map((s, i) => (
+        <Card key={i} className={s.layout === "grid" ? "" : "md:col-span-2"}>
+          {s.title && <H>{s.title}</H>}
+          {s.layout === "grid" ? (
+            <div className="grid grid-cols-2 gap-2">{(s.items ?? []).map((m, k) => (<div key={k} className="rounded-lg bg-background/40 p-3"><div className="font-serif text-lg text-foreground">{m.value}</div><div className="font-mono text-xs text-muted-foreground">{m.label}</div></div>))}</div>
+          ) : <KV items={s.items ?? []} />}
+        </Card>
+      ))}
     </div>
   );
 }

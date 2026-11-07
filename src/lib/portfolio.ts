@@ -16,8 +16,10 @@ export const DEFAULT_DATA = {
     fontMono: "Geist Mono",
     radius: 8,
     cardBorders: false,
+    light: { background: "#f3f6f9", surface: "#dde5ee", card: "#ffffff", primary: "#1f3149", primaryText: "#ffffff", accent: "#4f6f8f", text: "#0b1420", mutedText: "#4d6075" },
   },
-  settings: { autoplayMusic: true, defaultBanner: "tactical", showBannerPicker: true },
+  settings: { autoplayMusic: true, defaultBanner: "tactical", defaultMode: "dark" },
+  tabs: ["About", "Links", "Projects", "Skills", "Timeline", "Goals", "Setup", "Album", "Guestbook", "Audio", "FAQ"].map((id) => ({ id, label: id, visible: true })),
   profile: {
     name: "Md. Nafim Muttaki",
     nickname: "n a f i m",
@@ -42,18 +44,20 @@ export const DEFAULT_DATA = {
       "I'm an HSC Science student in Rajshahi, Bangladesh. Between physics problem sets and chemistry labs I build web apps, chess tooling and ESP8266 gadgets. Most of what I make starts as a fix for something that annoyed me.",
     philosophy:
       "Ship small, measure everything, delete what doesn't earn its bytes. I prefer boring tech that runs fast on a cheap phone over clever tech that only works on a flagship.",
-    hardware: [
+    sections: [
+      { title: "Workstation", layout: "list", items: [
       { label: "CPU", value: "AMD Ryzen 5 3400G · 4C/8T" },
       { label: "GPU", value: "Radeon Vega 11 (integrated)" },
       { label: "RAM", value: "16 GB DDR4 3200 MHz" },
       { label: "Storage", value: "512 GB NVMe SSD" },
       { label: "OS", value: "Windows 11 + WSL Ubuntu" },
-    ],
-    metrics: [
+      ] },
+      { title: "Academics", layout: "grid", items: [
       { label: "SSC GPA", value: "5.00" },
       { label: "Group", value: "Science" },
       { label: "HSC batch", value: "2028" },
       { label: "Focus", value: "Physics · Math · ICT" },
+      ] },
     ],
   },
   links: [
@@ -190,9 +194,11 @@ export function usePortfolio() {
 const fontLink = (f: string, w: boolean) =>
   `https://fonts.googleapis.com/css2?family=${encodeURIComponent(f.trim()).replace(/%20/g, "+")}${w ? ":wght@400;500;600;700" : ""}&display=swap`;
 
-export function useApplyTheme(t: PortfolioData["theme"]) {
+export function useApplyTheme(theme: PortfolioData["theme"], mode = "dark") {
   useEffect(() => {
+    const t = mode === "light" && theme.light ? { ...theme, ...theme.light } : theme;
     const s = document.documentElement.style;
+    s.colorScheme = mode === "light" ? "light" : "dark";
     const set = (k: string, v?: string) => v && s.setProperty(k, v);
     set("--background", t.background);
     set("--foreground", t.text);
@@ -220,7 +226,7 @@ export function useApplyTheme(t: PortfolioData["theme"]) {
         document.head.appendChild(l);
       }
     }
-  }, [t]);
+  }, [theme, mode]);
 }
 export function useLocal<T>(key: string, initial: T) {
   const [v, setV] = useState<T>(initial);

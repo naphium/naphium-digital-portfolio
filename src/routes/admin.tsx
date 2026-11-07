@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   Activity, ArrowDown, ArrowUp, ChevronRight, Copy, Cpu, Download, ExternalLink, Eye, EyeOff, FolderGit2, HelpCircle, History, Image, Info,
-  KeyRound, Link2, Lock, Maximize2, Minimize2, Music, Palette, Plus, RotateCcw, Settings, Sparkles, Target, Trash2, Upload, User,
+  KeyRound, LayoutList, Link2, Lock, Maximize2, Minimize2, Music, Palette, Plus, RotateCcw, Settings, Sparkles, Target, Trash2, Upload, User,
 } from "lucide-react";
 import { BASE_DATA, blank, loadData, mergeData, resetData, saveData, saveDraft, useApplyTheme, type PortfolioData } from "@/lib/portfolio";
 import { putMedia } from "@/lib/media";
@@ -37,9 +37,10 @@ const FONTS = [
 const SECTIONS: Record<Key, { icon: typeof User; desc: string }> = {
   profile: { icon: User, desc: "Name, bio, photo, banner and Discord ID." },
   theme: { icon: Palette, desc: "Colors, fonts, corner roundness and card borders." },
-  settings: { icon: Settings, desc: "Music autoplay and banner options." },
+  settings: { icon: Settings, desc: "Music autoplay, default banner and default dark/light mode." },
+  tabs: { icon: LayoutList, desc: "Reorder the menu buttons with the arrows, rename them or hide them." },
   presence: { icon: Activity, desc: "Status shown when no Discord ID is set." },
-  about: { icon: Info, desc: "Overview, philosophy, specs and academics." },
+  about: { icon: Info, desc: "Overview, philosophy and any number of sections (like Hardware or Metrics). Layout: list or grid." },
   links: { icon: Link2, desc: "Social and developer handles. Icons load automatically." },
   projects: { icon: FolderGit2, desc: "Work with links, images and tags." },
   skills: { icon: Sparkles, desc: "Skill groups, levels and badges." },
@@ -115,6 +116,16 @@ function Field({ name, value, onChange, root, top }: { name: string; value: V; o
         <select className="field" value={value} onChange={(e) => onChange(e.target.value)}>{["tactical", "contour", "cosmic", "slate"].map((b) => <option key={b}>{b}</option>)}</select>
       </label>
     );
+  if (typeof value === "string" && (name === "layout" || name === "defaultMode")) {
+    const opts = name === "layout" ? ["list", "grid"] : ["dark", "light"];
+    return (
+      <label className="block"><span className="admin-label">{label(name)}</span>
+        <select className="field" value={value} onChange={(e) => onChange(e.target.value)}>{opts.map((b) => <option key={b}>{b}</option>)}</select>
+      </label>
+    );
+  }
+  if (typeof value === "string" && root === "tabs" && name === "id")
+    return <div><span className="admin-label">Section</span><div className="field opacity-70">{value}</div></div>;
   if (typeof value === "string" && IMG.test(name))
     return (
       <label className="block"><span className="admin-label">{label(name)} — paste a link or upload</span>
@@ -244,13 +255,13 @@ function Admin() {
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-30 border-b border-border/40 bg-background/70 backdrop-blur-xl">
-        <div className="flex h-14 items-center gap-3 px-4">
+        <div className="flex min-h-14 flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2">
           <div className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-primary font-mono text-[11px] font-semibold text-primary-foreground">{data.profile.avatarInitials || "N"}</div>
           <div className="min-w-0">
             <div className="text-sm font-semibold text-foreground">Studio</div>
             <div className="truncate font-mono text-[10px] text-muted-foreground">{dirty ? "● unsaved changes · Ctrl+S" : "all changes saved"}</div>
           </div>
-          <div className="ml-auto flex items-center gap-1.5">
+          <div className="ml-auto flex flex-wrap items-center justify-end gap-1.5">
             <span className="hidden lg:inline-flex">{iconBtn(preview ? "Hide preview" : "Show preview", preview ? EyeOff : Eye, () => setPreview(!preview))}</span>
             <Link to="/" target="_blank" title="Open site" aria-label="Open site" className="icon-btn"><ExternalLink size={14} /></Link>
             {iconBtn("Export backup", Download, () => { const b = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }); const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = "naphium-data.json"; a.click(); })}
@@ -263,8 +274,8 @@ function Admin() {
       </header>
       <div className="flex">
         <aside className="sticky top-14 hidden h-[calc(100vh-3.5rem)] w-52 shrink-0 space-y-0.5 overflow-y-auto border-r border-border/40 p-3 md:block">{keys.map((k) => nav(k))}</aside>
-        <main className="min-w-0 flex-1 px-4 py-6 pb-24 md:px-8">
-          <nav className="-mx-4 mb-5 flex gap-1 overflow-x-auto px-4 pb-1 md:hidden">{keys.map((k) => nav(k, "!w-auto"))}</nav>
+        <main className="min-w-0 flex-1 overflow-x-hidden px-4 py-6 pb-24 md:px-8">
+          <nav className="-mx-4 mb-5 flex flex-wrap gap-1 px-4 pb-1 md:hidden">{keys.map((k) => nav(k, "!w-auto shrink-0"))}</nav>
           <div className="mx-auto max-w-2xl animate-in fade-in duration-300" key={section}>
             <h1 className="flex items-center gap-2.5 text-2xl text-foreground"><S.icon size={20} className="text-primary" />{label(section)}</h1>
             <p className="mt-1 text-sm text-muted-foreground">{S.desc}</p>
