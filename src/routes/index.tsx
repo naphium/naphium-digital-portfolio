@@ -190,7 +190,7 @@ function Hero({ data, mode, toggle }: { data: PortfolioData; mode: string; toggl
             const elapsed = now && row.start ? Math.max(0, Math.floor((now.getTime() - row.start) / 1000)) : 0;
             return (
               <div key={i} className="mt-3 flex items-center gap-3">
-                {row.img ? <img src={row.img} alt="" className="h-12 w-12 shrink-0 rounded-lg object-cover" /> : <div className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-secondary font-mono text-xs text-primary">{row.mode.replace(/^(Playing|Streaming|Listening to|Watching|Competing in) /, "").slice(0, 2).toUpperCase()}</div>}
+                {row.img ? <img src={row.img} alt="" className="h-12 w-12 shrink-0 rounded-lg object-cover" /> : dcAvatar ? <img src={dcAvatar} alt="" className="h-12 w-12 shrink-0 rounded-lg object-cover" /> : <div className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-secondary font-mono text-xs text-primary">{row.mode.replace(/^(Playing|Streaming|Listening to|Watching|Competing in) /, "").slice(0, 2).toUpperCase()}</div>}
                 <div className="min-w-0">
                   <div className="truncate font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{row.mode}</div>
                   <div className="truncate text-sm font-medium text-foreground">{row.title}</div>
