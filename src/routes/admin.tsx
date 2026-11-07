@@ -3,10 +3,11 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   Activity, ArrowDown, ArrowUp, ChevronRight, Copy, Cpu, Download, ExternalLink, Eye, EyeOff, FolderGit2, HelpCircle, History, Image, Info,
-  KeyRound, LayoutList, Link2, Lock, Maximize2, Minimize2, Music, Palette, Plus, RotateCcw, Settings, Sparkles, Target, Trash2, Upload, User,
+  LayoutList, Link2, Lock, Maximize2, Minimize2, Music, Palette, Plus, RotateCcw, Settings, Sparkles, Target, Trash2, Upload, User,
 } from "lucide-react";
 import { BASE_DATA, blank, loadData, mergeData, resetData, saveData, saveDraft, useApplyTheme, type PortfolioData } from "@/lib/portfolio";
 import { putMedia } from "@/lib/media";
+import { checkAdmin } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -37,7 +38,7 @@ const FONTS = [
 const SECTIONS: Record<Key, { icon: typeof User; desc: string }> = {
   profile: { icon: User, desc: "Name, bio, photo, banner and Discord ID." },
   theme: { icon: Palette, desc: "Colors, fonts, corner roundness and card borders." },
-  settings: { icon: Settings, desc: "Music autoplay, default banner and default dark/light mode." },
+  settings: { icon: Settings, desc: "Site title, default mode, start tab, music volume/shuffle/autoplay and what to show. The admin password is set on the server (ADMIN_PASSWORD)." },
   tabs: { icon: LayoutList, desc: "Reorder the menu buttons with the arrows, rename them or hide them." },
   presence: { icon: Activity, desc: "Status shown when no Discord ID is set." },
   about: { icon: Info, desc: "Overview, philosophy and any number of sections (like Hardware or Metrics). Layout: list or grid." },
@@ -50,7 +51,6 @@ const SECTIONS: Record<Key, { icon: typeof User; desc: string }> = {
   album: { icon: Image, desc: "Gallery pieces and photos." },
   tracks: { icon: Music, desc: "Upload songs or paste mp3 links. Tracks without audio play the built-in synth." },
   faq: { icon: HelpCircle, desc: "Questions and answers." },
-  admin: { icon: KeyRound, desc: "Passcode to open this panel." },
 };
 const PALETTES: Record<string, Partial<PortfolioData["theme"]>> = {
   Slate: { background: "#000000", surface: "#1f3149", card: "#142030", primary: "#a9c4dc", primaryText: "#000000", accent: "#4f6f8f", text: "#ffffff", mutedText: "#9fb3c8" },
@@ -95,7 +95,7 @@ function Field({ name, value, onChange, root, top }: { name: string; value: V; o
   if (typeof value === "number")
     return (
       <label className="block"><span className="admin-label">{label(name)}</span>
-        {name === "level" || name === "progress" || name === "radius" || name === "hue" ? (
+        {name === "level" || name === "progress" || name === "radius" || name === "hue" || name === "defaultVolume" ? (
           <div className="flex items-center gap-3">
             <input type="range" className="range flex-1" min={0} max={name === "hue" ? 360 : name === "radius" ? 24 : 100} value={value} onChange={(e) => onChange(+e.target.value)} />
             <span className="w-10 text-right font-mono text-xs text-muted-foreground">{value}</span>
@@ -116,8 +116,8 @@ function Field({ name, value, onChange, root, top }: { name: string; value: V; o
         <select className="field" value={value} onChange={(e) => onChange(e.target.value)}>{["tactical", "contour", "cosmic", "slate"].map((b) => <option key={b}>{b}</option>)}</select>
       </label>
     );
-  if (typeof value === "string" && (name === "layout" || name === "defaultMode")) {
-    const opts = name === "layout" ? ["list", "grid"] : ["dark", "light"];
+  if (typeof value === "string" && (name === "layout" || name === "defaultMode" || name === "defaultTab")) {
+    const opts = name === "layout" ? ["list", "grid"] : name === "defaultTab" ? BASE_DATA.tabs.map((t) => t.id) : ["dark", "light", "system"];
     return (
       <label className="block"><span className="admin-label">{label(name)}</span>
         <select className="field" value={value} onChange={(e) => onChange(e.target.value)}>{opts.map((b) => <option key={b}>{b}</option>)}</select>
@@ -238,7 +238,7 @@ function Admin() {
   if (!ok)
     return (
       <main className="grid min-h-screen place-items-center px-4">
-        <form className="panel w-full max-w-sm space-y-4 p-7" onSubmit={(e) => { e.preventDefault(); if (pass === data.admin.passcode) { sessionStorage.setItem("naphium:admin", "1"); setOk(true); } else toast.error("Wrong passcode"); }}>
+        <form className="panel w-full max-w-sm space-y-4 p-7" onSubmit={async (e) => { e.preventDefault(); try { const r = await checkAdmin({ data: { password: pass } }); if (r.ok) { sessionStorage.setItem("naphium:admin", "1"); setOk(true); } else toast.error(r.error); } catch { toast.error("Couldn't reach the server"); } }}>
           <div className="grid h-11 w-11 place-items-center rounded-2xl bg-primary text-primary-foreground"><Lock size={18} /></div>
           <div><h1 className="text-2xl text-foreground">Studio</h1><p className="text-sm text-muted-foreground">Owner access only.</p></div>
           <input type="password" className="field" placeholder="Passcode" value={pass} onChange={(e) => setPass(e.target.value)} autoFocus />

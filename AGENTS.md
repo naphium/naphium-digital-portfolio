@@ -29,3 +29,5 @@ use the editor.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
 - Portfolio content, theme colors and fonts live in one data object (src/lib/portfolio.ts) edited from /admin; new fields go in DEFAULT_DATA (first array item defines item shape) so mergeData upgrades old saved data.
+- Admin login is checked server-side against the ADMIN_PASSWORD env var (src/lib/admin.functions.ts); never store the password in portfolio data, which ships to the browser.
+- Vercel builds switch nitro to the "vercel" preset via the VERCEL env var in vite.config.ts; Lovable builds keep the default.

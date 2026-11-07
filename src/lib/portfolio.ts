@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 
 export const DEFAULT_DATA = {
-  admin: { passcode: "naphium" },
   theme: {
     background: "#000000",
     surface: "#1f3149",
@@ -18,7 +17,19 @@ export const DEFAULT_DATA = {
     cardBorders: false,
     light: { background: "#f3f6f9", surface: "#dde5ee", card: "#ffffff", primary: "#1f3149", primaryText: "#ffffff", accent: "#4f6f8f", text: "#0b1420", mutedText: "#4d6075" },
   },
-  settings: { autoplayMusic: true, defaultBanner: "tactical", defaultMode: "dark" },
+  settings: {
+    siteTitle: "Md. Nafim Muttaki Portfolio",
+    defaultMode: "dark",
+    defaultTab: "About",
+    defaultBanner: "tactical",
+    autoplayMusic: true,
+    defaultVolume: 50,
+    shuffleMusic: false,
+    showMusicPlayer: true,
+    showModeToggle: true,
+    showBackground: true,
+    showFooter: true,
+  },
   tabs: ["About", "Links", "Projects", "Skills", "Timeline", "Goals", "Setup", "Album", "Guestbook", "Audio", "FAQ"].map((id) => ({ id, label: id, visible: true })),
   profile: {
     name: "Md. Nafim Muttaki",

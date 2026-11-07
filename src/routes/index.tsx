@@ -38,16 +38,22 @@ function Index() {
   const [pick, setTab] = useState<Tab | null>(null);
   const [track, setTrack] = useState(0);
   const [m, setMode] = useLocal<string>("naphium:mode", "");
-  const mode = m || data.settings.defaultMode || "dark";
+  const st = data.settings;
+  const [sysLight, setSysLight] = useState(false);
+  useEffect(() => { setSysLight(window.matchMedia("(prefers-color-scheme: light)").matches); }, []);
+  useEffect(() => { if (st.siteTitle) document.title = st.siteTitle; }, [st.siteTitle]);
+  const def = st.defaultMode === "system" ? (sysLight ? "light" : "dark") : st.defaultMode || "dark";
+  const mode = (st.showModeToggle && m) || def;
   useApplyTheme(data.theme, mode);
   const known = data.tabs.filter((t) => (TABS as readonly string[]).includes(t.id));
   const tabs = [...known, ...TABS.filter((id) => !known.some((t) => t.id === id)).map((id) => ({ id, label: id, visible: true }))].filter((t) => t.visible);
-  const tab = (pick && tabs.some((t) => t.id === pick) ? pick : tabs[0]?.id) as Tab | undefined;
+  const start = tabs.some((t) => t.id === st.defaultTab) ? st.defaultTab : tabs[0]?.id;
+  const tab = (pick && tabs.some((t) => t.id === pick) ? pick : start) as Tab | undefined;
   return (
     <div className="min-h-screen pb-32">
-      <TopoCanvas />
+      {st.showBackground && <TopoCanvas />}
       <main className="mx-auto max-w-5xl px-4 pt-6 sm:pt-12">
-        <Hero data={data} mode={mode} toggle={() => setMode(mode === "light" ? "dark" : "light")} />
+        <Hero data={data} mode={mode} toggle={st.showModeToggle ? () => setMode(mode === "light" ? "dark" : "light") : undefined} />
         <nav className="panel mt-6 flex flex-wrap gap-1.5 p-1.5" aria-label="Sections">
           {tabs.map((t) => (
             <button key={t.id} onClick={() => setTab(t.id as Tab)} className={`tab-btn flex-1 basis-[30%] sm:basis-[15%] lg:basis-0 ${tab === t.id ? "tab-active" : ""}`}>{t.label || t.id}</button>
@@ -67,11 +73,11 @@ function Index() {
           {tab === "Audio" && <Audio d={data} track={track} setTrack={setTrack} />}
           {tab === "FAQ" && <Faq d={data} />}
         </section>
-        <footer className="mt-12 text-center font-mono text-xs text-muted-foreground">
+        {st.showFooter && <footer className="mt-12 text-center font-mono text-xs text-muted-foreground">
           {data.profile.coords} · © {new Date().getFullYear()} {data.profile.username}
-        </footer>
+        </footer>}
       </main>
-      <AudioPlayer tracks={data.tracks} index={track} setIndex={setTrack} autoplay={data.settings.autoplayMusic} />
+      {st.showMusicPlayer && <AudioPlayer tracks={data.tracks} index={track} setIndex={setTrack} autoplay={st.autoplayMusic} volume={st.defaultVolume} shuffle={st.shuffleMusic} />}
     </div>
   );
 }
@@ -122,7 +128,7 @@ const fmtEl = (s: number) => {
   return `${h ? `${h}:` : ""}${String(m).padStart(2, "0")}:${String(x).padStart(2, "0")}`;
 };
 
-function Hero({ data, mode, toggle }: { data: PortfolioData; mode: string; toggle: () => void }) {
+function Hero({ data, mode, toggle }: { data: PortfolioData; mode: string; toggle?: () => void }) {
   const p = data.profile;
   const now = useNow();
   const lan = useLanyard(p.discordId);
@@ -161,7 +167,7 @@ function Hero({ data, mode, toggle }: { data: PortfolioData; mode: string; toggl
         style={p.bannerUrl ? { backgroundImage: `url("${p.bannerUrl}")`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
       >
         {!p.bannerUrl && did && dcBanner && <img src={`https://dcdn.dstn.to/banners/${did}`} alt="" onError={() => setDcBanner(false)} className="absolute inset-0 h-full w-full object-cover" />}
-        <button onClick={toggle} aria-label={mode === "light" ? "Switch to dark mode" : "Switch to light mode"} className="icon-btn absolute right-2 top-2 bg-background/60 backdrop-blur">{mode === "light" ? <Moon size={14} /> : <Sun size={14} />}</button>
+        {toggle && <button onClick={toggle} aria-label={mode === "light" ? "Switch to dark mode" : "Switch to light mode"} className="icon-btn absolute right-2 top-2 bg-background/60 backdrop-blur">{mode === "light" ? <Moon size={14} /> : <Sun size={14} />}</button>}
         <span className="absolute bottom-2 left-3 font-mono text-xs text-muted-foreground">{p.coords}</span>
       </div>
       <div className="-mt-12 flex flex-col items-center px-4 pb-6 text-center">

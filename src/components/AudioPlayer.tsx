@@ -5,11 +5,12 @@ import { getMediaUrl } from "@/lib/media";
 type Track = { title: string; artist: string; bpm: number; notes: number[]; url?: string };
 const LENGTH = 90; // seconds per synth loop
 
-export function AudioPlayer({ tracks, index, setIndex, autoplay }: { tracks: Track[]; index: number; setIndex: (i: number) => void; autoplay?: boolean }) {
+export function AudioPlayer({ tracks, index, setIndex, autoplay, volume = 50, shuffle }: { tracks: Track[]; index: number; setIndex: (i: number) => void; autoplay?: boolean; volume?: number; shuffle?: boolean }) {
   const [playing, setPlaying] = useState(false);
   const [pos, setPos] = useState(0);
   const [dur, setDur] = useState(LENGTH);
-  const [vol, setVol] = useState(0.5);
+  const [vol, setVol] = useState(Math.min(Math.max(volume, 0), 100) / 100);
+  useEffect(() => { setVol(Math.min(Math.max(volume, 0), 100) / 100); }, [volume]);
   const ctxRef = useRef<AudioContext | null>(null);
   const gainRef = useRef<GainNode | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -17,7 +18,7 @@ export function AudioPlayer({ tracks, index, setIndex, autoplay }: { tracks: Tra
   const stepRef = useRef(0);
   const posRef = useRef(0);
   const track = tracks[index % Math.max(tracks.length, 1)];
-  const next = () => setIndex((index + 1) % tracks.length);
+  const next = () => setIndex(shuffle && tracks.length > 1 ? (index + 1 + Math.floor(Math.random() * (tracks.length - 1))) % tracks.length : (index + 1) % tracks.length);
 
   useEffect(() => { audioRef.current = new Audio(); return () => audioRef.current?.pause(); }, []);
   useEffect(() => {
